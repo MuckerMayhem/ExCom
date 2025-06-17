@@ -1,27 +1,12 @@
-export { Server } from './servers/Server.js'
+import { Server } from './servers/Server.js'
+import { serverName, serverHost, serverPort, guildId } from '../config.js' // Corrected path
 
-import { baystation } from './servers/baystation.js'
+export const configuredServer = new Server({
+  name: serverName,
+  host: serverHost,
+  port: serverPort,
+  guild: guildId // Ensure the Server class constructor uses 'guild' for guildId
+})
 
-export const serversByName = {
-  [baystation.getName()]: baystation
-}
-
-export const serversByGuild = {
-  [baystation.getGuild()]: baystation
-}
-
-export function getServersWithHandler(handler) {
-  return Object.entries(serversByGuild)
-    .filter(function([, server]) {
-      return !!server[handler]
-    })
-}
-
-export function getErisOptionsWithHandler(handler) {
-  return getServersWithHandler(handler).map(function([guild, server]) {
-    return {
-      name: server.getName(),
-      value: guild
-    }
-  })
-}
+// Re-export Server class
+export { Server }

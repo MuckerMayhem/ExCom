@@ -1,42 +1,45 @@
 import { Constants } from 'eris'
-import {
-  Server,
-  serversByGuild,
-  getErisOptionsWithHandler
-} from '../servers.js'
+import { configuredServer } from '../servers.js' // Import the single server
 
 export const type = Constants.ApplicationCommandTypes.CHAT_INPUT
+export const description = 'Lists connected players on the server.' // Updated description
 
-export const description = 'lists connected players'
-
-export const options = [
-  {
-    name: 'server',
-    type: Constants.ApplicationCommandOptionTypes.STRING,
-    description: 'the server to fetch status from',
-    choices: getErisOptionsWithHandler('players')
-  }
-]
+// No options needed for server selection anymore
+export const options = []
 
 export async function handler (interaction) {
-  let server = serversByGuild[interaction.data.options?.[0]?.value]
-  if (!(server instanceof Server)) {
-    server = serversByGuild[interaction.guildID]
+  try {
+    await interaction.acknowledge()
+  } catch (e) {
+    console.error("Failed to acknowledge interaction:", e)
+    return;
   }
-  if (!(server instanceof Server)) {
-    interaction.createMessage('No such server.')
+
+  if (!configuredServer || typeof configuredServer.players !== 'function') {
+    console.error("Configured server or players method is not available.");
+    try {
+      await interaction.createFollowup('Error: Server players functionality is not available.')
+    } catch (e) {
+      console.error("Failed to send followup for server/players not available:", e)
+    }
     return
   }
-  if (!(server.players)) {
-    interaction.createMessage(`${server.name} does not have a players handler.`)
+
+  const result = await configuredServer.players()
+
+  if (!result || !result.players) {
+    try {
+      await interaction.createFollowup('Failed to fetch player list. The server might be offline or unreachable.')
+    } catch (e) {
+      console.error("Failed to send followup for player list fetch failure:", e)
+    }
     return
   }
-  let acknowledged = interaction.acknowledge()
-  let result = await server.players()
-  await acknowledged
-  if (!result) {
-    interaction.createFollowup('Failed fetching status.')
-    return
+
+  const playerList = result.players.join(', ') || 'No players online.'
+  try {
+    await interaction.createFollowup(`${configuredServer.getName()} Players: ${playerList}`)
+  } catch (e) {
+    console.error("Failed to send players followup:", e)
   }
-  interaction.createFollowup(`${result.name} Players: ${result.players.join(', ')}`)
 }
